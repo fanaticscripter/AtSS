@@ -21,6 +21,7 @@ var _rootCmd = &cobra.Command{
 					Title("Choose an action").
 					Options(
 						huh.NewOption("Save current state", "save"),
+						huh.NewOption("Save current and future states automatically", "autosave"),
 						huh.NewOption("Restore previously saved state", "restore"),
 						huh.NewOption("Delete previously saved states", "delete"),
 						huh.NewOption("Open saves directory", "open"),
@@ -36,6 +37,8 @@ var _rootCmd = &cobra.Command{
 			if err := createBackupInteractive(); err != nil {
 				log.Fatal(err)
 			}
+		case "autosave":
+			startAutoBackups()
 		case "restore":
 			if err := restoreBackupInteractive(); err != nil {
 				log.Fatal(err)
@@ -74,6 +77,15 @@ var _saveCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 		}
+	},
+}
+
+var _autoSaveCmd = &cobra.Command{
+	Use:   "autosave",
+	Short: "Save current and future states automatically",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		startAutoBackups()
 	},
 }
 
@@ -118,7 +130,7 @@ func init() {
 
 func main() {
 	_saveCmd.Flags().StringVarP(&_saveCmdNote, "note", "n", "", "note to attach to the save, may be empty; the save is created non-interactively if this flag is set")
-	_rootCmd.AddCommand(_saveCmd, _restoreCmd, _deleteCmd, _openCmd)
+	_rootCmd.AddCommand(_saveCmd, _autoSaveCmd, _restoreCmd, _deleteCmd, _openCmd)
 
 	if err := _rootCmd.Execute(); err != nil {
 		log.Error(err)
