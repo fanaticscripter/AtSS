@@ -52,13 +52,27 @@ var _rootCmd = &cobra.Command{
 	},
 }
 
+var _saveCmdNote string
+
 var _saveCmd = &cobra.Command{
 	Use:   "save",
 	Short: "Save the current state",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := createBackupInteractive(); err != nil {
-			log.Fatal(err)
+		noteFlag := cmd.Flags().Lookup("note")
+		if noteFlag.Changed {
+			// --note flag is set, activate non-interactive mode.
+			backup, err := createBackup(BackupMetadata{
+				Note: _saveCmdNote,
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Infof("created backup %s", backup.Dir)
+		} else {
+			if err := createBackupInteractive(); err != nil {
+				log.Fatal(err)
+			}
 		}
 	},
 }
@@ -103,6 +117,7 @@ func init() {
 }
 
 func main() {
+	_saveCmd.Flags().StringVarP(&_saveCmdNote, "note", "n", "", "note to attach to the save, may be empty; the save is created non-interactively if this flag is set")
 	_rootCmd.AddCommand(_saveCmd, _restoreCmd, _deleteCmd, _openCmd)
 
 	if err := _rootCmd.Execute(); err != nil {

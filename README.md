@@ -17,7 +17,7 @@ A small utility to streamline save scumming for [Against the Storm](https://stor
 
 - Open the saves directory (typically `%USERPROFILE%\AppData\LocalLow\Eremite Games`) for manual operations. The game saves are in a folder there called `Against the Storm`, whereas our backups are saved in a separate folder called `Against the Storm - AtSS Backups` so that they aren't synced to Steam Cloud.
 
-- If you're used to the command line, you can use subcommands to skip the main menu. See `AtSS --help`.
+- If you're used to the command line, you can use subcommands to skip the main menu, or use `AtSS save --note <note>` to perform non-interactive saves, opening up scripting. See `AtSS --help`.
 
 ## What's not supported
 
