@@ -98,7 +98,7 @@ func startAutoBackups() {
 	// succession.
 	performBackup, _ := debounce.Debounce(func() {
 		backup, err := createBackup(BackupMetadata{
-			Note: "auto backup",
+			IsAutoSave: true,
 		})
 		if err != nil {
 			now := time.Now()

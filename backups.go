@@ -35,6 +35,7 @@ type Backup struct {
 
 type BackupMetadata struct {
 	CreatedAt     time.Time `json:"createdAt"`
+	IsAutoSave    bool      `json:"isAutoSave"`
 	IsOverwritten bool      `json:"isOverwritten"` // Whether this is an automatic backup created on restore
 	Note          string    `json:"note"`
 	Season        *SeasonId `json:"season"`
@@ -45,6 +46,8 @@ func (b Backup) String() string {
 	s += fmt.Sprintf(" [%s]", b.Metadata.Season)
 	if b.Metadata.Note != "" {
 		s += fmt.Sprintf(" %s", b.Metadata.Note)
+	} else if b.Metadata.IsAutoSave {
+		s += " auto backup"
 	}
 	if b.Metadata.IsOverwritten {
 		s = "[overwritten] " + s
