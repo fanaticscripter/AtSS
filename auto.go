@@ -106,9 +106,7 @@ func startAutoBackups() {
 				fmt.Sprintf("[%s] failed to create auto backup: %s", now.Format("2006-01-02 15:04:05"), err),
 			)
 		} else {
-			displayMessagesCh <- lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render(
-				fmt.Sprintf("created backup: %s", backup),
-			)
+			displayMessagesCh <- fmt.Sprintf("created backup: %s", backup)
 		}
 	}, 5*time.Second, debounce.WithMaxWait(30*time.Second))
 	performBackup() // Perform a backup upon startup
