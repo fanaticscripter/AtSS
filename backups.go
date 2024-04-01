@@ -17,9 +17,9 @@ const (
 	_againstTheStormExecutable = "Against the Storm.exe"
 
 	_backupRootDirname        = "Against the Storm - AtSS Backups"
-	_metadataFilename         = "atss.json"
 	_backupDirnameFormat      = "Bak.2006-01-02_15.04.05"
 	_overwrittenBackupDirname = "Bak.overwritten"
+	_metadataFilename         = "atss.json"
 )
 
 var _backupsDirectory string
@@ -37,12 +37,14 @@ type BackupMetadata struct {
 	CreatedAt     time.Time `json:"createdAt"`
 	IsOverwritten bool      `json:"isOverwritten"` // Whether this is an automatic backup created on restore
 	Note          string    `json:"note"`
+	Season        *SeasonId `json:"season"`
 }
 
 func (b Backup) String() string {
 	s := b.Metadata.CreatedAt.Format("2006-01-02 15:04:05")
+	s += fmt.Sprintf(" [%s]", b.Metadata.Season)
 	if b.Metadata.Note != "" {
-		s += fmt.Sprintf(" (%s)", b.Metadata.Note)
+		s += fmt.Sprintf(" %s", b.Metadata.Note)
 	}
 	if b.Metadata.IsOverwritten {
 		s = "[overwritten] " + s
@@ -73,6 +75,14 @@ func createBackup(metadata BackupMetadata) (backup Backup, err error) {
 
 	if metadata.CreatedAt.IsZero() {
 		metadata.CreatedAt = time.Now().Truncate(time.Second)
+	}
+	if metadata.Season == nil {
+		saveData, readSaveErr := readSave(_savesDirectory)
+		if readSaveErr != nil {
+			log.Warn(readSaveErr)
+		}
+		season := saveData.SeasonId()
+		metadata.Season = &season
 	}
 	dirname := metadata.CreatedAt.Format(_backupDirnameFormat)
 	if metadata.IsOverwritten {
@@ -152,31 +162,39 @@ func readBackup(dir string) (backup Backup, err error) {
 	}
 	// Load metadata.
 	metadataFile := filepath.Join(dir, _metadataFilename)
-	encoded, err := os.ReadFile(metadataFile)
-	if err != nil {
-		log.Warnf("failed to read backup metadata from '%s': %s", metadataFile, err)
+	encoded, readErr := os.ReadFile(metadataFile)
+	if readErr != nil {
+		log.Warnf("failed to read backup metadata from '%s': %s", metadataFile, readErr)
 	} else {
-		if err = json.Unmarshal(encoded, &backup.Metadata); err != nil {
-			log.Warnf("failed to decode backup metadata from '%s': %s", metadataFile, err)
+		if decodeErr := json.Unmarshal(encoded, &backup.Metadata); decodeErr != nil {
+			log.Warnf("failed to decode backup metadata from '%s': %s", metadataFile, decodeErr)
 		}
 	}
-	if !backup.Metadata.CreatedAt.IsZero() {
-		// Successfully loaded metadata.
-		return
-	}
 	// Fallback to parsing backup directory name.
-	dirname := filepath.Base(dir)
-	if dirname == _overwrittenBackupDirname {
-		backup.Metadata.IsOverwritten = true
-	} else {
-		backup.Metadata.CreatedAt, err = time.Parse(_backupDirnameFormat, dirname)
-		if err != nil {
-			log.Warnf("unrecognized backup directory name '%s'", dirname)
+	if backup.Metadata.CreatedAt.IsZero() {
+		dirname := filepath.Base(dir)
+		if dirname == _overwrittenBackupDirname {
+			backup.Metadata.IsOverwritten = true
+		} else {
+			var timeParseErr error
+			backup.Metadata.CreatedAt, timeParseErr = time.Parse(_backupDirnameFormat, dirname)
+			if timeParseErr != nil {
+				log.Warnf("unrecognized backup directory name '%s'", dirname)
+			}
 		}
 	}
 	// Fallback to using the directory's modification time.
 	if backup.Metadata.CreatedAt.IsZero() {
 		backup.Metadata.CreatedAt = stat.ModTime()
+	}
+	if backup.Metadata.Season == nil {
+		saveData, readSaveErr := readSave(dir)
+		if readSaveErr != nil {
+			log.Warn(readSaveErr)
+		} else {
+			season := saveData.SeasonId()
+			backup.Metadata.Season = &season
+		}
 	}
 	return
 }

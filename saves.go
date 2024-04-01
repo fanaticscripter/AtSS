@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/winlabs/gowin32"
 
 	"github.com/fanaticscripter/AtSS/log"
@@ -23,6 +25,34 @@ var _expectedSaveFiles = []string{
 	"Save.save",
 	"WorldSave.save",
 }
+
+var _validate = validator.New(validator.WithRequiredStructEnabled())
+
+type CompositeSave struct {
+	MetaSave RawMetaSave
+	Save     RawSave
+}
+
+// RawMetaSave is for MetaSave.save.
+type RawMetaSave struct {
+	Gameplay *struct {
+		HasActiveGame *bool `json:"hasActiveGame" validate:"required"`
+	} `json:"gameplay" validate:"required"`
+}
+
+// RawSave is for Save.save.
+type RawSave struct {
+	Gameplay *struct {
+		Year   *int `json:"year" validate:"required"`   // 1-based
+		Season *int `json:"season" validate:"required"` // 0, 1, 2
+	} `json:"gameplay" validate:"required"`
+}
+
+// 0 for world map (no active settlement), 3n-2 for year n drizzle, 3n-1 for
+// year n clearance, 3n for year n storm. -1 for invalid.
+type SeasonId int
+
+const _invalidSeasonId SeasonId = -1
 
 func init() {
 	// C:\Users\<username>\AppData\LocalLow\Eremite Games\Against the Storm
@@ -46,8 +76,8 @@ func init() {
 	}
 }
 
-func getSaveAge() (lastModified time.Time, age time.Duration, err error) {
-	pattern := filepath.Join(_savesDirectory, "*.save")
+func getSaveAge(dir string) (lastModified time.Time, age time.Duration, err error) {
+	pattern := filepath.Join(dir, "*.save")
 	saveFiles, _ := filepath.Glob(pattern)
 	if len(saveFiles) == 0 {
 		err = fmt.Errorf("failed to find save files '%s'", pattern)
@@ -70,4 +100,74 @@ func getSaveAge() (lastModified time.Time, age time.Duration, err error) {
 	}
 	age = time.Since(lastModified)
 	return
+}
+
+func readSave(dir string) (save CompositeSave, err error) {
+	var content []byte
+
+	metasavePath := filepath.Join(dir, "MetaSave.save")
+	content, err = os.ReadFile(metasavePath)
+	if err != nil {
+		err = fmt.Errorf("failed to read '%s': %w", metasavePath, err)
+		return
+	}
+	err = json.Unmarshal(content, &save.MetaSave)
+	if err != nil {
+		err = fmt.Errorf("failed to parse '%s': %w", metasavePath, err)
+		return
+	}
+	err = _validate.Struct(save.MetaSave)
+	if err != nil {
+		err = fmt.Errorf("failed to validate parsed '%s': %w", metasavePath, err)
+		return
+	}
+
+	savePath := filepath.Join(dir, "Save.save")
+	content, err = os.ReadFile(savePath)
+	if err != nil {
+		err = fmt.Errorf("failed to read '%s': %w", savePath, err)
+		return
+	}
+	err = json.Unmarshal(content, &save.Save)
+	if err != nil {
+		err = fmt.Errorf("failed to parse '%s': %w", savePath, err)
+		return
+	}
+	err = _validate.Struct(save.Save)
+	if err != nil {
+		err = fmt.Errorf("failed to validate parsed '%s': %w", savePath, err)
+	}
+	return
+}
+
+func (s CompositeSave) SeasonId() (sid SeasonId) {
+	defer func() {
+		if r := recover(); r != nil {
+			sid = _invalidSeasonId
+		}
+	}()
+	if !*s.MetaSave.Gameplay.HasActiveGame {
+		return 0
+	}
+	return SeasonId(*s.Save.Gameplay.Year*3 - 2 + *s.Save.Gameplay.Season)
+}
+
+func (sid SeasonId) String() string {
+	if sid < 0 {
+		return "invalid"
+	}
+	if sid == 0 {
+		return "world map"
+	}
+	year := (int(sid) + 2) / 3
+	var seasonName string
+	switch sid % 3 {
+	case 1:
+		seasonName = "drizzle"
+	case 2:
+		seasonName = "clearance"
+	case 0:
+		seasonName = "storm"
+	}
+	return fmt.Sprintf("Y%d %s", year, seasonName)
 }

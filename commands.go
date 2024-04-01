@@ -15,7 +15,7 @@ import (
 
 func createBackupInteractive() error {
 	var notice string
-	lastModified, _, err := getSaveAge()
+	lastModified, _, err := getSaveAge(_savesDirectory)
 	if err != nil {
 		log.Warnf("failed to determine the age of your current game save: %s", err)
 	} else {
