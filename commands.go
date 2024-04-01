@@ -60,7 +60,12 @@ func restoreBackupInteractive() error {
 	var options []huh.Option[Backup]
 	var hasOverwritten bool
 	for _, b := range backups {
-		options = append(options, huh.NewOption(b.String(), b))
+		text := b.String()
+		if b.Metadata.IsAutoSave {
+			// Dim auto backups.
+			text = lipgloss.NewStyle().Faint(true).Render(text)
+		}
+		options = append(options, huh.NewOption(text, b))
 		if b.Metadata.IsOverwritten {
 			hasOverwritten = true
 		}
@@ -74,7 +79,7 @@ func restoreBackupInteractive() error {
 	for {
 		var description string
 		if hasOverwritten {
-			description = "The backup marked as [overwritten] was auto created during your last restore."
+			description = "The backup marked as [overwritten] was auto created during your last restore.\n"
 		}
 		form := huh.NewForm(
 			huh.NewGroup(
@@ -129,10 +134,15 @@ func deleteBackupsInteractive() error {
 	var options []huh.Option[Backup]
 	for _, b := range backups {
 		if b.Metadata.IsOverwritten {
-			// There's only one copy of this auto backup, no point deleting it.
+			// There's only one copy of this auto overwritten backup, no point deleting it.
 			continue
 		}
-		options = append(options, huh.NewOption(b.String(), b))
+		text := b.String()
+		if b.Metadata.IsAutoSave {
+			// Dim auto backups.
+			text = lipgloss.NewStyle().Faint(true).Render(text)
+		}
+		options = append(options, huh.NewOption(text, b))
 	}
 	var toDelete []Backup
 	for {
