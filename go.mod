@@ -16,6 +16,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/winlabs/gowin32 v0.0.0-20221003142512-0d265587d3c9
 	github.com/zmwangx/debounce v1.0.0
+	golang.org/x/sys v0.18.0
 )
 
 require (
@@ -40,7 +41,6 @@ require (
 	golang.org/x/crypto v0.19.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.4.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )

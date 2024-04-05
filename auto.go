@@ -10,9 +10,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fsnotify/fsnotify"
 	"github.com/zmwangx/debounce"
+	"golang.org/x/sys/windows"
 
 	"github.com/fanaticscripter/AtSS/log"
 )
+
+const _autoBackupMutexName = "AtSS_autoBackupMutex"
 
 type autoBackupDisplayMsg string
 
@@ -80,6 +83,17 @@ func (m autoBackupTeaModel) View() string {
 }
 
 func startAutoBackups() {
+	// Make sure only one instance of autobackup runs.
+	_, err := windows.CreateMutex(nil, false, windows.StringToUTF16Ptr(_autoBackupMutexName))
+	if err != nil {
+		if err == windows.ERROR_ALREADY_EXISTS {
+			displayWarning("Another instance of autobackup is already running. Exiting.")
+			return
+		} else {
+			log.Warnf("failed to create mutex %s, cannot determine if autobackup is already running: %s", _autoBackupMutexName, err)
+		}
+	}
+
 	displayNotice("This program will now watch for changes to the game save, and automatically back up when a change is detected. " +
 		"There is a few seconds' delay for each update.\n\n" +
 		"Please keep this window open.")
