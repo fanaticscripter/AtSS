@@ -171,3 +171,23 @@ func (sid SeasonId) String() string {
 	}
 	return fmt.Sprintf("Y%d %s", year, seasonName)
 }
+
+func (sid SeasonId) IsValid() bool {
+	return sid >= 0
+}
+
+func (sid SeasonId) IsWorldMap() bool {
+	return sid == 0
+}
+
+func (sid SeasonId) IsDrizzle() bool {
+	return sid%3 == 1
+}
+
+func (sid SeasonId) IsClearance() bool {
+	return sid%3 == 2
+}
+
+func (sid SeasonId) IsStorm() bool {
+	return sid%3 == 0
+}

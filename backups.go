@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/fanaticscripter/AtSS/log"
 )
 
@@ -43,7 +44,25 @@ type BackupMetadata struct {
 
 func (b Backup) String() string {
 	s := b.Metadata.CreatedAt.Format("2006-01-02 15:04:05")
-	s += fmt.Sprintf(" [%s]", b.Metadata.Season)
+	season := _invalidSeasonId
+	if b.Metadata.Season != nil {
+		season = *b.Metadata.Season
+	}
+	if season.IsValid() {
+		var seasonColor string
+		if season.IsWorldMap() {
+			seasonColor = "9" // red
+		} else if season.IsDrizzle() {
+			seasonColor = "10" // green
+		} else if season.IsClearance() {
+			seasonColor = "11" // yellow
+		} else if season.IsStorm() {
+			seasonColor = "12" // blue
+		}
+		s += fmt.Sprintf(" [%s]", lipgloss.NewStyle().Foreground(lipgloss.Color(seasonColor)).Render(season.String()))
+	} else {
+		s += fmt.Sprintf(" [%s]", season)
+	}
 	if b.Metadata.Note != "" {
 		s += fmt.Sprintf(" %s", b.Metadata.Note)
 	} else if b.Metadata.IsAutoSave {
