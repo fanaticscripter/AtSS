@@ -38,6 +38,7 @@ type BackupMetadata struct {
 	CreatedAt     time.Time `json:"createdAt"`
 	IsAutoSave    bool      `json:"isAutoSave"`
 	IsOverwritten bool      `json:"isOverwritten"` // Whether this is an automatic backup created on restore
+	Hash          string    `json:"hash"`
 	Note          string    `json:"note"`
 	Season        *SeasonId `json:"season"`
 }
@@ -106,6 +107,13 @@ func createBackup(metadata BackupMetadata) (backup Backup, err error) {
 		season := saveData.SeasonId()
 		metadata.Season = &season
 	}
+	if metadata.Hash == "" {
+		var hashErr error
+		metadata.Hash, hashErr = hashSave(_savesDirectory)
+		if hashErr != nil {
+			log.Warnf("failed to hash save: %s", hashErr)
+		}
+	}
 	dirname := metadata.CreatedAt.Format(_backupDirnameFormat)
 	if metadata.IsOverwritten {
 		dirname = _overwrittenBackupDirname
@@ -170,6 +178,11 @@ func getBackups() (backups []Backup, err error) {
 }
 
 func readBackup(dir string) (backup Backup, err error) {
+	// Sometimes we introduce new metadata fields that are not present in old
+	// backups. We write them back when possible, as controlled by the
+	// metadataNeedsUpdate flag. However, we don't overwrite the metadata file
+	// if metadataLoadingFailed.
+	var metadataLoadingFailed, metadataNeedsUpdate bool
 	backup.Dir = dir
 	stat, err := os.Stat(dir)
 	if err != nil {
@@ -186,9 +199,11 @@ func readBackup(dir string) (backup Backup, err error) {
 	metadataFile := filepath.Join(dir, _metadataFilename)
 	encoded, readErr := os.ReadFile(metadataFile)
 	if readErr != nil {
+		metadataLoadingFailed = true
 		log.Warnf("failed to read backup metadata from '%s': %s", metadataFile, readErr)
 	} else {
 		if decodeErr := json.Unmarshal(encoded, &backup.Metadata); decodeErr != nil {
+			metadataLoadingFailed = true
 			log.Warnf("failed to decode backup metadata from '%s': %s", metadataFile, decodeErr)
 		}
 	}
@@ -209,6 +224,15 @@ func readBackup(dir string) (backup Backup, err error) {
 	if backup.Metadata.CreatedAt.IsZero() {
 		backup.Metadata.CreatedAt = stat.ModTime()
 	}
+	if backup.Metadata.Hash == "" {
+		var hashErr error
+		backup.Metadata.Hash, hashErr = hashSave(dir)
+		if hashErr != nil {
+			log.Warnf("failed to hash backup '%s': %s", dir, hashErr)
+		} else {
+			metadataNeedsUpdate = true
+		}
+	}
 	if backup.Metadata.Season == nil {
 		saveData, readSaveErr := readSave(dir)
 		if readSaveErr != nil {
@@ -216,6 +240,17 @@ func readBackup(dir string) (backup Backup, err error) {
 		} else {
 			season := saveData.SeasonId()
 			backup.Metadata.Season = &season
+			metadataNeedsUpdate = true
+		}
+	}
+	if !metadataLoadingFailed && metadataNeedsUpdate {
+		encoded, encodeErr := json.MarshalIndent(backup.Metadata, "", "  ")
+		if encodeErr != nil {
+			log.Warnf("failed to encode metadata of backup '%s': %s", dir, encodeErr)
+		} else {
+			if writeErr := os.WriteFile(metadataFile, encoded, 0o644); writeErr != nil {
+				log.Warnf("failed to write back metadata of backup '%s': %s", dir, writeErr)
+			}
 		}
 	}
 	return

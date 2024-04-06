@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/winlabs/gowin32"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/fanaticscripter/AtSS/log"
 )
@@ -99,6 +100,28 @@ func getSaveAge(dir string) (lastModified time.Time, age time.Duration, err erro
 		return
 	}
 	age = time.Since(lastModified)
+	return
+}
+
+func hashSave(dir string) (hash string, err error) {
+	pattern := filepath.Join(dir, "*.save")
+	saveFiles, _ := filepath.Glob(pattern)
+	if len(saveFiles) == 0 {
+		err = fmt.Errorf("failed to find save files '%s'", pattern)
+		return
+	}
+	h, _ := blake2b.New512(nil)
+	for _, f := range saveFiles {
+		var content []byte
+		content, err = os.ReadFile(f)
+		if err != nil {
+			err = fmt.Errorf("failed to read save file '%s': %w", f, err)
+			return
+		}
+		_, _ = h.Write(content)
+		_, _ = h.Write([]byte("\000"))
+	}
+	hash = fmt.Sprintf("%x", h.Sum(nil))
 	return
 }
 
