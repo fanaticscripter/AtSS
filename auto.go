@@ -116,9 +116,7 @@ func startAutoBackups() {
 		})
 		if err != nil {
 			now := time.Now()
-			displayMessagesCh <- lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(
-				fmt.Sprintf("[%s] failed to create auto backup: %s", now.Format("2006-01-02 15:04:05"), err),
-			)
+			displayMessagesCh <- colored(_red, fmt.Sprintf("[%s] failed to create auto backup: %s", now.Format("2006-01-02 15:04:05"), err))
 		} else {
 			displayMessagesCh <- fmt.Sprintf("created backup: %s", backup)
 		}

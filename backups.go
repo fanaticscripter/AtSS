@@ -50,17 +50,17 @@ func (b Backup) String() string {
 		season = *b.Metadata.Season
 	}
 	if season.IsValid() {
-		var seasonColor string
+		var seasonColor lipgloss.Color
 		if season.IsWorldMap() {
-			seasonColor = "9" // red
+			seasonColor = _red
 		} else if season.IsDrizzle() {
-			seasonColor = "10" // green
+			seasonColor = _green
 		} else if season.IsClearance() {
-			seasonColor = "11" // yellow
+			seasonColor = _yellow
 		} else if season.IsStorm() {
-			seasonColor = "12" // blue
+			seasonColor = _blue
 		}
-		s += fmt.Sprintf(" [%s]", lipgloss.NewStyle().Foreground(lipgloss.Color(seasonColor)).Render(season.String()))
+		s += fmt.Sprintf(" [%s]", colored(seasonColor, season.String()))
 	} else {
 		s += fmt.Sprintf(" [%s]", season)
 	}

@@ -10,6 +10,13 @@ import (
 	"github.com/mitchellh/go-ps"
 )
 
+const (
+	_red    = lipgloss.Color("9")
+	_green  = lipgloss.Color("10")
+	_yellow = lipgloss.Color("11")
+	_blue   = lipgloss.Color("12")
+)
+
 func copyFile(src, dst string) error {
 	stat, err := os.Stat(src)
 	if err != nil {
@@ -34,14 +41,18 @@ func copyFile(src, dst string) error {
 	return nil
 }
 
-func displayBox(color string, format string, a ...any) {
+func colored(color lipgloss.Color, s string) string {
+	return lipgloss.NewStyle().Foreground(color).Render(s)
+}
+
+func displayBox(color lipgloss.Color, format string, a ...any) {
 	fmt.Println()
 	fmt.Println(
 		lipgloss.NewStyle().
 			Width(79).
 			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(color)).
-			Foreground(lipgloss.Color(color)).
+			BorderForeground(color).
+			Foreground(color).
 			Padding(1, 2).
 			Render(fmt.Sprintf(format, a...)),
 	)
@@ -49,11 +60,11 @@ func displayBox(color string, format string, a ...any) {
 }
 
 func displayNotice(format string, a ...any) {
-	displayBox("12", format, a...) // blue
+	displayBox(_blue, format, a...)
 }
 
 func displayWarning(format string, a ...any) {
-	displayBox("9", format, a...) // red
+	displayBox(_red, format, a...)
 }
 
 func openDirectoryInExplorer(dir string) error {
