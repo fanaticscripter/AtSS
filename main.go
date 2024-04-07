@@ -15,20 +15,24 @@ var _rootCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		var action string
+		// Use reverse on the selected option, since the default highlight color
+		// is overridden.
+		theme := huh.ThemeCharm()
+		theme.Focused.SelectedOption.Reverse(true)
 		form := huh.NewForm(
 			huh.NewGroup(
 				huh.NewSelect[string]().
 					Title("Choose an action").
 					Options(
-						huh.NewOption("Save current state", "save"),
-						huh.NewOption("Save current and future states automatically", "autosave"),
-						huh.NewOption("Restore previously saved state", "restore"),
-						huh.NewOption("Delete previously saved states", "delete"),
-						huh.NewOption("Open saves directory", "open"),
+						huh.NewOption(colored(_green, "Save current state"), "save"),
+						huh.NewOption(colored(_green, "Save current and future states automatically"), "autosave"),
+						huh.NewOption(colored(_blue, "Restore previously saved state"), "restore"),
+						huh.NewOption(colored(_red, "Delete previously saved states"), "delete"),
+						huh.NewOption(colored(_yellow, "Open saves directory"), "open"),
 					).
 					Value(&action),
 			),
-		)
+		).WithTheme(theme)
 		if err := form.Run(); err != nil {
 			log.Fatal(err)
 		}
